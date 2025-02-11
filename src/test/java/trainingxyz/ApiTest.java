@@ -4,6 +4,8 @@ import models.Product;
 import org.junit.Test;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
 
 // Rest-Assured Pattern:
 // Given - Specify prerequisites.
@@ -16,21 +18,43 @@ public class ApiTest {
     public void getCategories() {
         String endpoint = "http://localhost:8888/api_testing/category/read.php";
         var response = given().
-                when().
-                get(endpoint).
+                when().get(endpoint).
                 then();
         response.log().body();
     }
 
     @Test
+    public void getProducts() {
+        String endpoint = "http://localhost:8888/api_testing/product/read.php";
+        var response = given().
+                when().get(endpoint).
+                then().log().headers().assertThat().
+                statusCode(200).
+                headers("Content-Type", equalTo("application/json; charset=UTF-8")).
+                body("records.size()", greaterThan(0)).
+                body("records.id", everyItem(notNullValue())).
+                body("records.name", everyItem(notNullValue())).
+                body("records.description", everyItem(notNullValue())).
+                body("records.price", everyItem(notNullValue())).
+                body("records.category_id", everyItem(notNullValue())).
+                body("records.category_name", everyItem(notNullValue())).
+                body("records.id[0]", equalTo(21));
+    }
+
+    @Test
     public void getProduct() {
         String endpoint = "http://localhost:8888/api_testing/product/read_one.php";
-        var response = given().
-                queryParam("id", 2).
-                when().
-                get(endpoint).
-                then();
-        response.log().body();
+        var response = given().queryParam("id", 2).
+                when().get(endpoint).
+                then().assertThat().
+                statusCode(200).
+                body("id", equalTo("2")).
+                body("name", equalTo("Cross-Back Training Tank")).
+                body("description", equalTo("The most awesome phone of 2013!")).
+                body("price", equalTo("299.00")).
+                body("category_id", equalTo(2)).
+                body("category_name", equalTo("Active Wear - Women"));
+//        response.log().body();
     }
 
     @Test
@@ -44,10 +68,8 @@ public class ApiTest {
                 "category_id" : 3
                 }
                 """;
-        var response = given().
-                body(body).
-                when().
-                post(endpoint).
+        var response = given().body(body).
+                when().post(endpoint).
                 then();
         response.log().body();
     }
@@ -64,10 +86,8 @@ public class ApiTest {
                 "category_id" : 3
                 }
                 """;
-        var response = given().
-                body(body).
-                when().
-                put(endpoint).
+        var response = given().body(body).
+                when().put(endpoint).
                 then();
         response.log().body();
     }
@@ -80,10 +100,8 @@ public class ApiTest {
                 "id" : 19
                 }
                 """;
-        var response = given().
-                body(body).
-                when().
-                delete(endpoint).
+        var response = given().body(body).
+                when().delete(endpoint).
                 then();
         response.log().body();
     }
@@ -97,12 +115,28 @@ public class ApiTest {
                 12,
                 3
         );
-        var response = given().
-                body(product).
-                when().
-                post(endpoint).
+        var response = given().body(product).
+                when().post(endpoint).
                 then();
         response.log().body();
+    }
+
+    @Test
+    public void getDeserializedProduct() {
+        String endpoint = "http://localhost:8888/api_testing/product/read_one.php";
+        Product expectedProduct = new Product(
+                2,
+                "Cross-Back Training Tank",
+                "The most awesome phone of 2013!",
+                299.00,
+                2,
+                "Active Wear - Women"
+        );
+        Product actualProduct = given().queryParam("id", "2").
+                when().get(endpoint).
+                as(Product.class);
+
+        assertThat(actualProduct, samePropertyValuesAs(expectedProduct));
     }
 
     // CRUD for Sweatband
@@ -117,10 +151,8 @@ public class ApiTest {
                 "category_id" : 3
                 }
                 """;
-        var response = given().
-                body(body).
-                when().
-                post(endpoint).
+        var response = given().body(body).
+                when().post(endpoint).
                 then();
         response.log().body();
     }
@@ -134,10 +166,8 @@ public class ApiTest {
                 "price" : 6
                 }
                 """;
-        var response = given().
-                body(body).
-                when().
-                put(endpoint).
+        var response = given().body(body).
+                when().put(endpoint).
                 then();
         response.log().body();
     }
@@ -145,10 +175,8 @@ public class ApiTest {
     @Test
     public void getSweatband() {
         String endpoint = "http://localhost:8888/api_testing/product/read_one.php";
-        var response = given().
-                queryParam("id", 26).
-                when().
-                get(endpoint).
+        var response = given().queryParam("id", 26).
+                when().get(endpoint).
                 then();
         response.log().body();
     }
@@ -161,11 +189,27 @@ public class ApiTest {
                 "id" : 26
                 }
                 """;
-        var response = given().
-                body(body).
-                when().
-                delete(endpoint).
+        var response = given().body(body).
+                when().delete(endpoint).
                 then();
         response.log().body();
+    }
+
+    // Challenge to verify Response
+    @Test
+    public void getMultiVitamins() {
+        String endpoint = "http://localhost:8888/api_testing/product/read_one.php";
+        given().queryParam("id", 18).
+                when().get(endpoint).
+                then().assertThat().
+                statusCode(200).
+                headers("Content-Type", equalTo("application/json")).
+                body("id", equalTo("18")).
+                body("name", equalTo("Multi-Vitamin (90 capsules)")).
+                body("description", equalTo("A daily dose of our Multi-Vitamins fulfills a day’s nutritional" +
+                        " needs for over 12 vitamins and minerals.")).
+                body("price", equalTo("10.00")).
+                body("category_id", equalTo(4)).
+                body("category_name", equalTo("Supplements"));
     }
 }
